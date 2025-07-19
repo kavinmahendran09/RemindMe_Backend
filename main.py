@@ -555,12 +555,11 @@ def handle_ai_conversation(from_whatsapp_number, incoming_msg):
 
 # --- SCHEDULER THREAD ---
 def run_scheduler():
-    schedule.every().day.at("00:43").do(check_and_send_notifications)
-    # schedule.every().minute.do(check_and_send_notifications)  # For testing
-    logger.info("Scheduler started. Notifications will be sent daily at 21:20")
+    schedule.every(15).seconds.do(check_and_send_notifications)
+    logger.info("Scheduler started. Notifications will be checked every 15 seconds")
     while True:
         schedule.run_pending()
-        time.sleep(60)
+        time.sleep(1)
 
 # --- APSCHEDULER FOR RSVP POLLING ---
 scheduler = BackgroundScheduler()
