@@ -13,6 +13,7 @@ import schedule
 import google.generativeai as genai
 import uuid
 import re
+import pytz
 
 # Load environment variables from .env file
 load_dotenv()
@@ -121,8 +122,10 @@ def check_and_send_notifications():
     execution_id = str(uuid.uuid4())[:8]
     logger.info(f"[{execution_id}] Starting notification check...")
     try:
-        today = datetime.now().date()
-        logger.info(f"[{execution_id}] Current date for check: {today}")
+        # Use IST timezone (UTC+5:30) for India
+        ist = pytz.timezone('Asia/Kolkata')
+        today = datetime.now(ist).date()
+        logger.info(f"[{execution_id}] Current date for check (IST): {today}")
         response = supabase.table('events').select(
             'id, title, event_date, days_to_notify, event_type, user_id, notified'
         ).or_('notified.is.null,notified.eq.').execute()
