@@ -553,18 +553,19 @@ def handle_ai_conversation(from_whatsapp_number, incoming_msg):
     resp.message(gemini_reply)
     return Response(str(resp), mimetype='text/xml')
 
-# --- SCHEDULER THREAD (DEPRECATED - NOW USING APSCHEDULER) ---
-# This function is no longer needed as we're using APScheduler for all jobs
+# --- SCHEDULER THREAD ---
 def run_scheduler():
-    logger.info("Legacy scheduler thread is deprecated. All jobs now use APScheduler.")
+    schedule.every().day.at("00:43").do(check_and_send_notifications)
+    # schedule.every().minute.do(check_and_send_notifications)  # For testing
+    logger.info("Scheduler started. Notifications will be sent daily at 21:20")
     while True:
-        time.sleep(60)  # Just keep the thread alive but do nothing
+        schedule.run_pending()
+        time.sleep(60)
 
-# --- APSCHEDULER FOR ALL BACKGROUND JOBS ---
+# --- APSCHEDULER FOR RSVP POLLING ---
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=process_rsvp_messages, trigger="interval", seconds=15)
 scheduler.add_job(func=process_messages, trigger="interval", seconds=15)
-scheduler.add_job(func=check_and_send_notifications, trigger="interval", seconds=15)
 scheduler.start()
 
 # --- FLASK ROUTES ---
@@ -648,8 +649,18 @@ def get_user_notifications(user_id):
             'message': str(e)
         }), 500
 
-# --- APPLICATION STARTUP ---
+# --- SCHEDULER THREAD START ---
+_scheduler_started = False
 if __name__ == '__main__':
-    logger.info("Starting RemindMe Notification API with APScheduler and AI...")
-    logger.info("All background jobs (notifications, RSVP, messages) will run every 15 seconds")
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        if not _scheduler_started:
+            scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+            scheduler_thread.start()
+            _scheduler_started = True
+            logger.info("Scheduler thread started in main process.")
+        else:
+            logger.info("Scheduler thread already started.")
+    else:
+        logger.info("Skipping scheduler thread start in reloader process.")
+    logger.info("Starting RemindMe Notification API with built-in scheduler and AI...")
     app.run(debug=True, host='0.0.0.0', port=5002)
