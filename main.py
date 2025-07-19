@@ -553,18 +553,18 @@ def handle_ai_conversation(from_whatsapp_number, incoming_msg):
     resp.message(gemini_reply)
     return Response(str(resp), mimetype='text/xml')
 
-# --- SCHEDULER THREAD ---
+# --- SCHEDULER THREAD (DEPRECATED - NOW USING APSCHEDULER) ---
+# This function is no longer needed as we're using APScheduler for all jobs
 def run_scheduler():
-    schedule.every(15).seconds.do(check_and_send_notifications)
-    logger.info("Scheduler started. Notifications will be checked every 15 seconds")
+    logger.info("Legacy scheduler thread is deprecated. All jobs now use APScheduler.")
     while True:
-        schedule.run_pending()
-        time.sleep(1)
+        time.sleep(60)  # Just keep the thread alive but do nothing
 
-# --- APSCHEDULER FOR RSVP POLLING ---
+# --- APSCHEDULER FOR ALL BACKGROUND JOBS ---
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=process_rsvp_messages, trigger="interval", seconds=15)
 scheduler.add_job(func=process_messages, trigger="interval", seconds=15)
+scheduler.add_job(func=check_and_send_notifications, trigger="interval", seconds=15)
 scheduler.start()
 
 # --- FLASK ROUTES ---
@@ -648,18 +648,8 @@ def get_user_notifications(user_id):
             'message': str(e)
         }), 500
 
-# --- SCHEDULER THREAD START ---
-_scheduler_started = False
+# --- APPLICATION STARTUP ---
 if __name__ == '__main__':
-    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        if not _scheduler_started:
-            scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
-            scheduler_thread.start()
-            _scheduler_started = True
-            logger.info("Scheduler thread started in main process.")
-        else:
-            logger.info("Scheduler thread already started.")
-    else:
-        logger.info("Skipping scheduler thread start in reloader process.")
-    logger.info("Starting RemindMe Notification API with built-in scheduler and AI...")
+    logger.info("Starting RemindMe Notification API with APScheduler and AI...")
+    logger.info("All background jobs (notifications, RSVP, messages) will run every 15 seconds")
     app.run(debug=True, host='0.0.0.0', port=5002)
